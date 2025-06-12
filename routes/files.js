@@ -108,22 +108,29 @@ router.get('/download/:id', auth, async (req, res) => {
 // @access  Public
 router.get('/download/shared/:token', async (req, res) => {
     try {
+        console.log('Attempting to download shared file with token:', req.params.token);
         const file = await File.findOne({ shareToken: req.params.token });
+        console.log('File found:', file ? 'Yes' : 'No');
 
         if (!file) {
+            console.log('No file found with token:', req.params.token);
             return res.status(404).json({ msg: 'File not found or invalid link' });
         }
 
         if (new Date() > file.shareLinkExpires) {
+            console.log('Link expired for file:', file._id);
             return res.status(410).json({ msg: 'Link has expired' });
         }
 
+        console.log('Processing download for file:', file.originalName);
         const decryptionKey = Buffer.from(file.encryptionKey, 'hex');
         const iv = Buffer.from(file.iv, 'hex');
 
         const decipher = crypto.createDecipheriv('aes-256-cbc', decryptionKey, iv);
 
         const encryptedFilePath = path.join(__dirname, '..', file.path);
+        console.log('Reading file from path:', encryptedFilePath);
+        
         const readStream = fs.createReadStream(encryptedFilePath);
         
         res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
@@ -131,7 +138,7 @@ router.get('/download/shared/:token', async (req, res) => {
         readStream.pipe(decipher).pipe(res);
 
     } catch (err) {
-        console.error(err.message);
+        console.error('Error in shared file download:', err.message);
         res.status(500).send('Server error');
     }
 });
