@@ -36,30 +36,32 @@ app.get('/', (req, res) => {
     res.send('Smart File Vault API is running!');
 });
 
-// MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/smart_file_vault';
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB Connected'))
+.catch(err => console.error('MongoDB connection error:', err));
 
-mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-}).then(() => {
-    console.log('Connected to MongoDB');
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+  });
+}
 
-    // Serve static files in production
-    if (process.env.NODE_ENV === 'production') {
-        app.use(express.static(path.join(__dirname, '../frontend/build')));
-        
-        app.get('*', (req, res) => {
-            res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-        });
-    }
+const PORT = process.env.PORT || 5000;
 
-    const PORT = process.env.PORT || 5000;
-
-    app.listen(PORT, () => {
-        console.log(`Server is running on port ${PORT}`);
-    });
-    
-}).catch(err => {
-    console.error('Connection to MongoDB failed', err);
+// Update the server to listen on all network interfaces
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log('Current working directory:', process.cwd());
+  console.log('Environment file path:', require('path').resolve('.env'));
+  console.log('Environment Variables:');
+  console.log('JWT_SECRET:', process.env.JWT_SECRET);
+  console.log('MONGODB_URI:', process.env.MONGODB_URI);
+  console.log('PORT:', process.env.PORT);
 }); 
