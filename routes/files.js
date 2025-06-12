@@ -128,8 +128,15 @@ router.get('/download/shared/:token', async (req, res) => {
 
         const decipher = crypto.createDecipheriv('aes-256-cbc', decryptionKey, iv);
 
-        const encryptedFilePath = path.join(__dirname, '..', file.path);
+        // Update path construction to handle both development and production
+        const encryptedFilePath = path.resolve(__dirname, '..', file.path);
         console.log('Reading file from path:', encryptedFilePath);
+        
+        // Check if file exists
+        if (!fs.existsSync(encryptedFilePath)) {
+            console.error('File not found at path:', encryptedFilePath);
+            return res.status(404).json({ msg: 'File not found on server' });
+        }
         
         const readStream = fs.createReadStream(encryptedFilePath);
         
@@ -148,30 +155,39 @@ router.get('/download/shared/:token', async (req, res) => {
 // @access  Private
 router.post('/share/:id', auth, async (req, res) => {
     try {
+        console.log('Generating share link for file ID:', req.params.id);
         const file = await File.findById(req.params.id);
 
         if (!file) {
+            console.log('File not found with ID:', req.params.id);
             return res.status(404).json({ msg: 'File not found' });
         }
 
         if (file.user.toString() !== req.user.id) {
+            console.log('Unauthorized access attempt for file:', req.params.id);
             return res.status(401).json({ msg: 'Not authorized' });
         }
 
         const shareToken = crypto.randomBytes(32).toString('hex');
         const shareLinkExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+        console.log('Generated share token:', shareToken);
+        console.log('Share link expires:', shareLinkExpires);
+
         file.shareToken = shareToken;
         file.shareLinkExpires = shareLinkExpires;
 
         await file.save();
+        console.log('File updated with share token:', file._id);
 
         // For development: http://localhost:3000
         const shareUrl = `${process.env.FRONTEND_URL || 'https://smart-file-vault-frontend.onrender.com'}/shared/${shareToken}`;
+        console.log('Generated share URL:', shareUrl);
+        
         res.json({ shareUrl });
 
     } catch (err) {
-        console.error(err.message);
+        console.error('Error generating share link:', err.message);
         res.status(500).send('Server error');
     }
 });
