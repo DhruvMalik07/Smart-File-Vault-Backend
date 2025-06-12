@@ -159,7 +159,8 @@ router.post('/share/:id', auth, async (req, res) => {
 
         await file.save();
 
-        const shareUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/shared/${shareToken}`;
+        // For development: http://localhost:3000
+        const shareUrl = `${process.env.FRONTEND_URL || 'https://smart-file-vault-frontend.onrender.com'}/shared/${shareToken}`;
         res.json({ shareUrl });
 
     } catch (err) {
